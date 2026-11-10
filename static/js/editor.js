@@ -18,6 +18,10 @@
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const uid = () => Math.random().toString(36).slice(2, 12).padEnd(10, 'x');
   const EDITOR_WIDTH = 440;
+  const FRAMES = [
+    ['fita', 'Fita adesiva'], ['polaroid', 'Polaroid'], ['postit', 'Post-it a grafite'],
+    ['cantos', 'Cantoneiras'], ['recorte', 'Recorte rasgado'], ['lapis', 'Rabisco a lápis'],
+  ];
 
   let isOpen = false;
   let logged = Boolean(cfg.logado) || !cfg.precisa_senha;
@@ -169,7 +173,7 @@
       const fd = new FormData();
       fd.append('foto', file);
       const r = await api('/api/foto', { method: 'POST', body: fd });
-      entry.paragrafos.push({ imagem: r.caminho, legenda: '' });
+      entry.paragrafos.push({ imagem: r.caminho, legenda: '', moldura: 'fita' });
       busy = false;
       touch();
       render();
@@ -197,6 +201,9 @@
     if (isPhoto) {
       return h('div', { class: 'ed-block' }, tools,
         h('img', { class: 'ed-photo', src: staticBase + b.imagem, alt: '' }),
+        h('label', { class: 'ed-field' }, h('span', { text: 'Moldura' }),
+          h('select', { onchange: (e) => { b.moldura = e.target.value; touch(); } },
+            FRAMES.map(([v, t]) => h('option', { value: v, selected: (b.moldura || 'fita') === v, text: t })))),
         textField('Legenda (a lápis, embaixo da foto)', b.legenda, (v) => { b.legenda = v; }, { max: 160 }));
     }
     return h('div', { class: 'ed-block' }, tools, areaField('', b, (v) => { entry.paragrafos[bi] = v; }, { rows: 4 }));

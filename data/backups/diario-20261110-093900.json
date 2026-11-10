@@ -1,0 +1,33 @@
+{
+  "titulo": "Diário de Bordo",
+  "dono": "Agisö",
+  "subtitulo": "Meu registro pessoal da minha jornada nesse grande e assustador mundo...",
+  "ex_libris": "Se encontrou este diário, por favor o devolva! E não leia a não ser que tenha permissão.",
+  "fim": "E os dias continuam...eu espero, ao menos.",
+  "entradas": [
+    {
+      "id": "b1c826ec74",
+      "data": "Dia 1",
+      "titulo": "O Início da minha jornada...",
+      "local": "???",
+      "paragrafos": [
+        "Minha cabeça dói...eu não sei como vim parar aqui...o que me trouxe, ou *quem* me trouxe...não consigo me lembrar de nada, talvez a dor de cabeça tenha a ver com isso. O local no qual acordei parece uma espécie de vila, com algumas casas e construções espalhadas, mas não encontrei nenhum morador. Na verdade, encontrei jaulas, com alguns dragões que eu mesmo nunca havia visto, um deles conseguiu escapar de sua jaula, era um *Morte Murmurante*, que veio em minha direção, e depois de alguns minutos de muito esforço, consegui sair com vida. Sai correndo como se não houvesse amanhã, sem olhar por onde ia, só queria ficar longe daquele lugar. Depois de alguns minutos correndo, meu corpo já não aguentava mais...eu estava no meio de uma floresta. Parando para pensar, aquilo poderia ser um acampamento, ou até mesmo uma vila de caçadores de dragões...que terrível. Consegui registrar o exato dragão que me atacou, depois de analisar, realmente era um Morte Murmurante, mas ele não tinha a coloração verde clássica...talvez um albino? Coitado...espero que tenha conseguido sair daquele lugar terrível.",
+        {
+          "imagem": "fotos/ce8d467147e3.png",
+          "legenda": "Eu confirmo o que todos os livros falam sobre essa criatura, seus dentes *realmente* são afiados!",
+          "moldura": "fita"
+        },
+        "Depois de tudo isso, cai no sono. Sei das outras criaturas que habitam esse mundo, mas nada que uma pequena toca de terra não resolva."
+      ]
+    },
+    {
+      "id": "rmxqfb2rcb",
+      "data": "Dia 2",
+      "titulo": "Entendo mais sobre o lugar",
+      "local": "???",
+      "paragrafos": [
+        ""
+      ]
+    }
+  ]
+}

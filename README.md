@@ -46,11 +46,22 @@ Dentro dos textos:
 - `*assim*` fica sublinhado em vermelho;
 - `~~assim~~` fica riscado, como palavra cortada na escrita.
 
-Para colar uma foto (um print de construção, por exemplo), ponha o arquivo em `static/fotos/` e use um item assim dentro de `paragrafos`:
+Para colar uma foto, use o botão **Adicionar foto** no painel (ou ponha o arquivo em `static/fotos/` e use um item assim dentro de `paragrafos`):
 
 ```json
-{ "imagem": "fotos/minha-torre.png", "legenda": "A torre do posto" }
+{ "imagem": "fotos/minha-torre.png", "legenda": "A torre do posto", "moldura": "polaroid" }
 ```
+
+A foto se ajusta sozinha ao tamanho da imagem (horizontal, vertical ou quadrada). `moldura` é opcional e pode ser:
+
+| Valor | Aparência |
+|---|---|
+| `fita` | moldura de papel creme com fita adesiva (padrão) |
+| `polaroid` | margem branca grossa, legenda escrita nela |
+| `postit` | post-it amarelo, foto em grafite |
+| `cantos` | presa por quatro cantoneiras escuras |
+| `recorte` | papel rasgado, de borda irregular |
+| `lapis` | foto em grafite com contorno riscado à mão |
 
 A capa, a folha de rosto e a página de dentro da capa usam `dono`, `titulo`, `subtitulo`, `ex_libris` e `fim`, também em `data/diario.json`.
 

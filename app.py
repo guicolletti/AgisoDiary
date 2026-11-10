@@ -24,7 +24,6 @@ import shutil
 import threading
 import time
 import uuid
-import gunicorn
 from datetime import datetime
 from functools import wraps
 from hmac import compare_digest
@@ -42,6 +41,36 @@ EDIT_PASSWORD = os.environ.get("EDIT_PASSWORD", "")
 MAX_BACKUPS = 40
 
 app = Flask(__name__)
+
+
+def _versao_estaticos():
+    """Número que muda quando qualquer CSS/JS/imagem do site muda.
+
+    É colocado como ?v=... nos links, para o navegador (e o cache do Render)
+    buscarem os arquivos novos a cada deploy, em vez de usar cópias antigas."""
+    maior = 0
+    for pasta in ("css", "js", "img"):
+        base = Path(app.static_folder) / pasta
+        if base.is_dir():
+            for arq in base.iterdir():
+                try:
+                    maior = max(maior, int(arq.stat().st_mtime))
+                except OSError:
+                    pass
+    return maior
+
+
+@app.context_processor
+def _injetar_versao():
+    return {"v": _versao_estaticos()}
+
+
+@app.after_request
+def _cache(resp):
+    # a página em si nunca fica em cache; os estáticos têm ?v=, então podem
+    if resp.mimetype == "text/html" or request.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
 app.json.ensure_ascii = False  # mantém o "ö" e os acentos legíveis no JSON
 app.config.update(
     TEMPLATES_AUTO_RELOAD=True,
@@ -122,6 +151,7 @@ PADRAO = {
     "fim": "",
     "entradas": [],
 }
+MOLDURAS = ("fita", "polaroid", "postit", "cantos", "recorte", "lapis")
 RE_FOTO = re.compile(r"^fotos/[A-Za-z0-9_.-]{1,100}\.(png|jpe?g|gif|webp)$", re.I)
 RE_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 
@@ -203,7 +233,12 @@ def limpar_diario(carga):
                 imagem = b.get("imagem")
                 if not isinstance(imagem, str) or not RE_FOTO.match(imagem):
                     raise ValueError(f"Foto inválida na {rotulo}. Use as fotos enviadas pelo editor.")
-                blocos.append({"imagem": imagem, "legenda": _texto(b.get("legenda"), 160, f"Legenda ({rotulo})")})
+                moldura = b.get("moldura")
+                blocos.append({
+                    "imagem": imagem,
+                    "legenda": _texto(b.get("legenda"), 160, f"Legenda ({rotulo})"),
+                    "moldura": moldura if moldura in MOLDURAS else "fita",
+                })
             else:
                 raise ValueError(f"Bloco desconhecido na {rotulo}.")
 

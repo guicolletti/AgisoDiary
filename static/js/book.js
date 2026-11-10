@@ -118,6 +118,85 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Fotos: molduras que se adaptam ao tamanho da imagem                 */
+  /* ------------------------------------------------------------------ */
+
+  // padX: espaço que a moldura toma dos lados; maxH: altura máxima da foto
+  const FRAMES = {
+    fita:     { padX: 18, maxH: 340 },
+    polaroid: { padX: 24, maxH: 320 },
+    postit:   { padX: 32, maxH: 320 },
+    cantos:   { padX: 0,  maxH: 350 },
+    recorte:  { padX: 16, maxH: 340 },
+    lapis:    { padX: 12, maxH: 340 },
+  };
+  const FRAME_DEFAULT = 'fita';
+  const imgDims = new Map();   // endereço -> {w, h} (tamanho real da foto)
+  const mediaUrl = (src) => (/^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : staticBase + src);
+
+  function photoSources(data) {
+    const out = [];
+    ((data && data.entradas) || []).forEach((e) => (e.paragrafos || []).forEach((b) => {
+      if (b && typeof b === 'object' && b.imagem) out.push(b.imagem);
+    }));
+    return out;
+  }
+  function loadDims(src) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => { imgDims.set(src, { w: im.naturalWidth || 4, h: im.naturalHeight || 3 }); resolve(); };
+      im.onerror = () => { imgDims.set(src, { w: 4, h: 3 }); resolve(); };
+      im.src = mediaUrl(src);
+    });
+  }
+  const missingDims = (data) => [...new Set(photoSources(data))].filter((src) => !imgDims.has(src));
+
+  function seeded(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    let a = h >>> 0;
+    return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; };
+  }
+
+  // borda de papel rasgado (polígono em px)
+  function raggedClip(w, h, rand) {
+    const pts = [];
+    const step = 14;
+    const j = () => (rand() * 4.5).toFixed(1);
+    for (let x = 0; x < w; x += step) pts.push(`${x}px ${j()}px`);
+    for (let y = 0; y < h; y += step) pts.push(`${(w - j()).toFixed(1)}px ${y}px`);
+    for (let x = w; x > 0; x -= step) pts.push(`${x}px ${(h - j()).toFixed(1)}px`);
+    for (let y = h; y > 0; y -= step) pts.push(`${j()}px ${y}px`);
+    return `polygon(${pts.join(',')})`;
+  }
+
+  function buildPhoto(block, bodyW, k) {
+    const frame = FRAMES[block.moldura] ? block.moldura : FRAME_DEFAULT;
+    const cfg = FRAMES[frame];
+    const dim = imgDims.get(block.imagem) || { w: 4, h: 3 };
+    const availW = Math.max(120, bodyW - 40 - cfg.padX);
+    const scale = Math.min(availW / dim.w, cfg.maxH / dim.h, 2);
+    const iw = Math.max(40, Math.round(dim.w * scale));
+    const ih = Math.max(40, Math.round(dim.h * scale));
+    const alt = esc(block.legenda || '');
+    const cap = block.legenda ? `<figcaption>${alt}</figcaption>` : '';
+    const img = `<div class="pi"><img src="${esc(mediaUrl(block.imagem))}" alt="${alt}" style="width:${iw}px;height:${ih}px"></div>`;
+
+    const fig = document.createElement('figure');
+    fig.className = `photo m-${frame}`;
+    let pfStyle = '';
+    let inside = false;
+    if (frame === 'polaroid') inside = true;
+    if (frame === 'postit') inside = true;
+    if (frame === 'recorte') pfStyle = ` style="clip-path:${raggedClip(iw + 16, ih + 16, seeded(block.imagem + k))}"`;
+    const capHtml = frame === 'polaroid' ? `<figcaption>${esc(block.legenda || '')}</figcaption>` : cap;
+    fig.innerHTML = inside
+      ? `<div class="pf">${img}${capHtml}</div>`
+      : `<div class="pf"${pfStyle}>${img}</div>${cap}`;
+    return fig;
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Paginação: despeja as entradas em páginas do tamanho real           */
   /* ------------------------------------------------------------------ */
 
@@ -131,7 +210,6 @@
     const entryPage = [];    // índice (em pages) em que cada entrada começa
     const fits = () => body.scrollHeight <= body.clientHeight + 0.5;
     const flush = () => { if (body.childElementCount) { pages.push(body.innerHTML); body.innerHTML = ''; } };
-    const mediaUrl = (src) => (/^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : staticBase + src);
 
     function maxFit(p, tokens, from) {
       p.innerHTML = renderTokens(tokens, from, tokens.length);
@@ -178,10 +256,10 @@
       for (const block of blocks) {
         // foto colada na página
         if (typeof block === 'object' && block.imagem) {
-          const fig = document.createElement('figure');
-          fig.className = 'photo';
-          fig.innerHTML = `<img src="${esc(mediaUrl(block.imagem))}" alt="${esc(block.legenda || '')}">${block.legenda ? `<figcaption>${esc(block.legenda)}</figcaption>` : ''}`;
+          const fig = buildPhoto(block, body.clientWidth, k);
           body.appendChild(fig);
+          // altura em múltiplos da pauta, para o texto seguinte continuar alinhado
+          fig.style.height = `${Math.ceil((fig.offsetHeight + 10) / LH) * LH}px`;
           if (!fits()) {
             body.removeChild(fig);
             if (head && body.lastElementChild === head && body.childElementCount > 1) moveHeadToNewPage(); else flush();
@@ -1015,10 +1093,28 @@
     return found;
   }
 
+  // refaz o livro; se houver fotos novas, espera saber o tamanho delas
+  let pendingBuild = null;
+  let buildSeq = 0;
+  function rebuild(data, opts) {
+    const miss = missingDims(data);
+    if (!miss.length) { buildSeq++; assemble(data, opts); return Promise.resolve(); }
+    const seq = ++buildSeq;
+    const job = Promise.all(miss.map(loadDims)).then(() => {
+      if (seq === buildSeq) assemble(data, opts);
+      if (pendingBuild === job) pendingBuild = null;
+    });
+    pendingBuild = job;
+    return job;
+  }
+
   window.AgisoBook = {
     getData: () => diario,
-    rebuild: (data, opts) => assemble(data, opts),
-    goToEntry: (k) => { if (entryPageIdx[k] !== undefined) jumpToPage(entryPageIdx[k]); },
+    rebuild: (data, opts) => rebuild(data, opts),
+    goToEntry: (k) => {
+      const go = () => { if (entryPageIdx[k] !== undefined) jumpToPage(entryPageIdx[k]); };
+      if (pendingBuild) pendingBuild.then(go); else go();
+    },
     entryAtCurrentPage,
     setInset: (px) => {
       inset = px;
@@ -1036,6 +1132,7 @@
     await waitForFonts();
     layout();
     measureRuleShift();
+    await Promise.all(missingDims(diario).map(loadDims));
     assemble(diario, {});
 
     const start = pageFromHash();
